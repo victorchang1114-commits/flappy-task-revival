@@ -1,0 +1,384 @@
+{\rtf1\ansi\ansicpg950\cocoartf2822
+\cocoatextscaling0\cocoaplatform0{\fonttbl\f0\fswiss\fcharset0 Helvetica;}
+{\colortbl;\red255\green255\blue255;}
+{\*\expandedcolortbl;;}
+\paperw11900\paperh16840\margl1440\margr1440\vieww29200\viewh16300\viewkind0
+\pard\tx720\tx1440\tx2160\tx2880\tx3600\tx4320\tx5040\tx5760\tx6480\tx7200\tx7920\tx8640\pardirnatural\partightenfactor0
+
+\f0\fs24 \cf0 <!DOCTYPE html>\
+<html>\
+<head>\
+<meta charset="UTF-8">\
+<meta name="viewport" content="width=device-width, initial-scale=1.0">\
+<title>Flappy Task Revival Pro</title>\
+\
+<style>\
+body\{\
+    margin:0;\
+    display:flex;\
+    justify-content:center;\
+    align-items:center;\
+    height:100vh;\
+    background:linear-gradient(135deg,#74ebd5,#9face6);\
+    font-family:'Segoe UI','PingFang TC','Helvetica Neue',sans-serif;\
+\}\
+canvas\{\
+    border-radius:20px;\
+    box-shadow:0 20px 50px rgba(0,0,0,0.3);\
+\}\
+#overlay\{\
+    position:absolute;\
+    text-align:center;\
+    max-width:380px;\
+\}\
+.panel\{\
+    background:rgba(255,255,255,0.25);\
+    backdrop-filter:blur(15px);\
+    padding:20px;\
+    border-radius:20px;\
+\}\
+button\{\
+    padding:8px 14px;\
+    margin:6px;\
+    border:none;\
+    border-radius:10px;\
+    font-size:14px;\
+    background:#667eea;\
+    color:white;\
+    cursor:pointer;\
+\}\
+button.active\{\
+    background:#ff6b6b;\
+\}\
+.task-item\{\
+    display:flex;\
+    align-items:center;\
+    gap:10px;\
+    margin:6px 0;\
+\}\
+input[type="text"]\{\
+    width:90%;\
+    padding:6px;\
+    border-radius:8px;\
+    border:none;\
+    margin:5px 0;\
+\}\
+</style>\
+</head>\
+\
+<body>\
+\
+<div id="overlay"></div>\
+<canvas id="game" width="400" height="600"></canvas>\
+\
+<script>\
+const canvas=document.getElementById("game");\
+const ctx=canvas.getContext("2d");\
+const overlay=document.getElementById("overlay");\
+\
+/* \uc0\u9989  Leaderboard (Session) */\
+let leaderboard=[];\
+function saveScore(name,score,diff)\{\
+    leaderboard.push(\{name,score,diff\});\
+    leaderboard.sort((a,b)=>b.score-a.score);\
+    leaderboard=leaderboard.slice(0,5);\
+\}\
+function showLeaderboard()\{\
+    let html="<div class='panel'><h2>\uc0\u55356 \u57286  Leaderboard</h2>";\
+    if(leaderboard.length===0)\{\
+        html+="<div>\uc0\u23578 \u26410 \u26377 \u20998 \u25976 </div>";\
+    \}else\{\
+        leaderboard.forEach((p,i)=>\{\
+            html+=`<div>$\{i+1\}. $\{p.name\} - $\{p.score\} ($\{p.diff\})</div>`;\
+        \});\
+    \}\
+    html+="<button onclick='showSetup()'>\uc0\u36820 \u22238 </button></div>";\
+    overlay.innerHTML=html;\
+\}\
+\
+/* \uc0\u9989  \u20219 \u21209  */\
+let tasks=[];\
+let activeTasks=[];\
+let taskStatus=[];\
+let reviveMessage="\uc0\u23436 \u25104  3 \u20491 \u20219 \u21209 \u21363 \u21487 \u24489 \u27963 \u65281 ";\
+let reviveCount=0;\
+const maxRevives=5;\
+\
+/* \uc0\u9989  \u38627 \u24230  */\
+let difficulty="normal";\
+\
+function difficultyButton(value,label)\{\
+    return `<button class="$\{difficulty===value?'active':''\}"\
+        onclick="setDifficulty('$\{value\}')">$\{label\}</button>`;\
+\}\
+\
+function setDifficulty(level)\{\
+    difficulty=level;\
+    showSetup();\
+\}\
+\
+function showSetup()\{\
+    overlay.innerHTML=`\
+    <div class="panel">\
+    <h2>\uc0\u24314 \u31435 \u20219 \u21209 \u28165 \u21934 </h2>\
+    <input type="text" id="taskInput" placeholder="\uc0\u35712 \u26360 ,\u36939 \u21205 ,\u21917 \u27700 "><br>\
+    <input type="text" id="reviveInput" placeholder="\uc0\u23436 \u25104  3 \u20491 \u20219 \u21209 \u21363 \u21487 \u24489 \u27963 \u65281 "><br>\
+\
+    <div>\uc0\u36984 \u25799 \u38627 \u24230 \u65306 </div>\
+    $\{difficultyButton("easy","Easy")\}\
+    $\{difficultyButton("normal","Normal")\}\
+    $\{difficultyButton("difficult","Difficult")\}\
+\
+    <div>\uc0\u30446 \u21069 \u38627 \u24230 \u65306  <b>$\{difficulty.toUpperCase()\}</b></div>\
+\
+    <button onclick="saveSetup()">\uc0\u38283 \u22987 \u36938 \u25138 </button>\
+    <button onclick="showLeaderboard()">\uc0\u26597 \u30475 \u25490 \u34892 \u27036 </button>\
+    </div>`;\
+\}\
+\
+/* \uc0\u9989  \u39131 \u34892 \u38899 \u25928  */\
+const audioCtx=new (window.AudioContext||window.webkitAudioContext)();\
+function swoosh(startFreq,endFreq,duration,volume=0.2,type="triangle")\{\
+    const osc=audioCtx.createOscillator();\
+    const gain=audioCtx.createGain();\
+    osc.connect(gain);\
+    gain.connect(audioCtx.destination);\
+    osc.type=type;\
+    osc.frequency.setValueAtTime(startFreq,audioCtx.currentTime);\
+    osc.frequency.exponentialRampToValueAtTime(endFreq,audioCtx.currentTime+duration);\
+    gain.gain.setValueAtTime(volume,audioCtx.currentTime);\
+    gain.gain.exponentialRampToValueAtTime(0.001,audioCtx.currentTime+duration);\
+    osc.start();\
+    osc.stop(audioCtx.currentTime+duration);\
+\}\
+function jumpSound()\{\
+    if(difficulty==="easy") swoosh(300,600,0.15,0.15);\
+    if(difficulty==="normal") swoosh(400,900,0.12,0.18);\
+    if(difficulty==="difficult") swoosh(600,1200,0.1,0.22);\
+\}\
+function scoreSound()\{\
+    if(difficulty==="easy") swoosh(500,800,0.18,0.12);\
+    if(difficulty==="normal") swoosh(700,1200,0.15,0.15);\
+    if(difficulty==="difficult") swoosh(900,1800,0.12,0.18);\
+\}\
+function hitSound()\{\
+    if(difficulty==="easy") swoosh(400,100,0.3,0.2,"sawtooth");\
+    if(difficulty==="normal") swoosh(500,80,0.35,0.25,"sawtooth");\
+    if(difficulty==="difficult") swoosh(700,60,0.4,0.3,"sawtooth");\
+\}\
+\
+/* \uc0\u9989  \u36938 \u25138  */\
+let settings=\{speed:1.6,gap:220,spawnRate:140\};\
+let bird=\{x:80,y:300,r:20,velocity:0,gravity:0.35,jump:-6\};\
+let pipes=[];\
+let score=0;\
+let frames=0;\
+let gameStarted=false;\
+let gameOver=false;\
+\
+function saveSetup()\{\
+    let input=document.getElementById("taskInput").value;\
+    tasks=input.split(",").map(t=>t.trim()).filter(t=>t!="");\
+\
+    if(tasks.length===0)\{\
+        tasks=["\uc0\u23436 \u25104 \u19968 \u38917 \u23567 \u20219 \u21209 ","\u21917 \u27700 ","\u28145 \u21628 \u21560 "];\
+    \}\
+\
+    let msg=document.getElementById("reviveInput").value;\
+    if(msg) reviveMessage=msg;\
+\
+    if(difficulty==="easy") settings.speed=1.2;\
+    if(difficulty==="normal") settings.speed=1.6;\
+    if(difficulty==="difficult") settings.speed=2.2;\
+\
+    startGame();\
+\}\
+\
+function startGame()\{\
+    overlay.innerHTML="";\
+    score=0;\
+    frames=0;\
+    pipes=[];\
+    bird.y=300;\
+    bird.velocity=0;\
+    reviveCount=0;\
+    gameStarted=true;\
+    gameOver=false;\
+\}\
+\
+function pickRandomTasks()\{\
+    let shuffled=[...tasks];\
+    for(let i=shuffled.length-1;i>0;i--)\{\
+        let j=Math.floor(Math.random()*(i+1));\
+        [shuffled[i],shuffled[j]]=[shuffled[j],shuffled[i]];\
+    \}\
+    activeTasks=shuffled.slice(0,Math.min(3,shuffled.length));\
+    taskStatus=new Array(activeTasks.length).fill(false);\
+\}\
+\
+function gameOverScreen()\{\
+    pickRandomTasks();\
+    let html="";\
+    activeTasks.forEach((t,i)=>\{\
+        html+=`\
+        <div class="task-item">\
+            <input type="checkbox"\
+            onchange="updateTask($\{i\},this.checked)">\
+            <span>$\{t\}</span>\
+        </div>`;\
+    \});\
+\
+    overlay.innerHTML=`\
+    <div class="panel">\
+        <h2>Game Over</h2>\
+        <div>\uc0\u20998 \u25976 \u65306 $\{score\}</div>\
+        <input type="text" id="playerName" placeholder="\uc0\u36664 \u20837 \u21517 \u23383 ">\
+        <button onclick="submitScore()">\uc0\u25552 \u20132 \u20998 \u25976 </button>\
+        <div>$\{reviveMessage\}</div>\
+        <div>\uc0\u21097 \u39192 \u24489 \u27963 \u27425 \u25976 \u65306 $\{maxRevives-reviveCount\}</div>\
+        $\{html\}\
+        <div id="reviveArea"></div>\
+        <button onclick="showSetup()">\uc0\u37325 \u26032 \u38283 \u22987 </button>\
+    </div>`;\
+\}\
+\
+function submitScore()\{\
+    let name=document.getElementById("playerName").value||"Player";\
+    saveScore(name,score,difficulty);\
+    showLeaderboard();\
+\}\
+\
+function updateTask(i,val)\{\
+    taskStatus[i]=val;\
+    if(taskStatus.filter(x=>x).length>=3 &&\
+       reviveCount<maxRevives)\{\
+        document.getElementById("reviveArea").innerHTML=\
+        `<button onclick="reviveBird()">\uc0\u55357 \u56613  \u24489 \u27963 \u23567 \u40165 </button>`;\
+    \}\
+\}\
+\
+function reviveBird()\{\
+    reviveCount++;\
+    gameOver=false;\
+    overlay.innerHTML="";\
+    bird.y=300;\
+    bird.velocity=0;\
+    pipes=[];\
+    frames=0;\
+\}\
+\
+document.addEventListener("click",()=>\{\
+    if(gameStarted&&!gameOver)\{\
+        bird.velocity=bird.jump;\
+        jumpSound();\
+    \}\
+\});\
+\
+function createPipe()\{\
+    let topHeight=Math.random()*200+80;\
+    pipes.push(\{\
+        x:canvas.width,\
+        top:topHeight,\
+        bottom:canvas.height-topHeight-settings.gap-80,\
+        passed:false\
+    \});\
+\}\
+\
+function update()\{\
+    if(!gameStarted||gameOver)return;\
+\
+    frames++;\
+    bird.velocity+=bird.gravity;\
+    bird.y+=bird.velocity;\
+\
+    if(frames%settings.spawnRate===0)createPipe();\
+\
+    pipes.forEach(pipe=>\{\
+        pipe.x-=settings.speed;\
+\
+        if(!pipe.passed&&pipe.x<bird.x)\{\
+            pipe.passed=true;\
+            score++;\
+            scoreSound();\
+        \}\
+\
+        if(\
+            bird.x+bird.r>pipe.x &&\
+            bird.x-bird.r<pipe.x+60 &&\
+            (bird.y-bird.r<pipe.top ||\
+             bird.y+bird.r>canvas.height-pipe.bottom-80)\
+        )\{\
+            gameOver=true;\
+            hitSound();\
+            gameOverScreen();\
+        \}\
+    \});\
+\
+    if(bird.y+bird.r>canvas.height-80)\{\
+        gameOver=true;\
+        hitSound();\
+        gameOverScreen();\
+    \}\
+\}\
+\
+function drawBird()\{\
+    ctx.save();\
+    ctx.translate(bird.x,bird.y);\
+    ctx.rotate(bird.velocity*0.05);\
+    ctx.fillStyle="#ffcc00";\
+    ctx.beginPath();\
+    ctx.arc(0,0,bird.r,0,Math.PI*2);\
+    ctx.fill();\
+    let wing=Math.sin(frames*0.3)*10;\
+    ctx.fillStyle="#ffaa00";\
+    ctx.beginPath();\
+    ctx.ellipse(-5,0,15,10,wing*Math.PI/180,0,Math.PI*2);\
+    ctx.fill();\
+    ctx.fillStyle="white";\
+    ctx.beginPath();\
+    ctx.arc(8,-5,6,0,Math.PI*2);\
+    ctx.fill();\
+    ctx.fillStyle="black";\
+    ctx.beginPath();\
+    ctx.arc(10,-5,3,0,Math.PI*2);\
+    ctx.fill();\
+    ctx.fillStyle="orange";\
+    ctx.beginPath();\
+    ctx.moveTo(20,0);\
+    ctx.lineTo(35,5);\
+    ctx.lineTo(20,10);\
+    ctx.closePath();\
+    ctx.fill();\
+    ctx.restore();\
+\}\
+\
+function draw()\{\
+    ctx.clearRect(0,0,400,600);\
+    pipes.forEach(pipe=>\{\
+        ctx.fillStyle="#3cb043";\
+        ctx.fillRect(pipe.x,0,60,pipe.top);\
+        ctx.fillRect(pipe.x,600-pipe.bottom-80,60,pipe.bottom);\
+    \});\
+    ctx.fillStyle="#ded895";\
+    ctx.fillRect(0,520,400,80);\
+    drawBird();\
+    if(!gameOver)\{\
+        ctx.fillStyle="#111";\
+        ctx.font="bold 50px Segoe UI";\
+        ctx.textAlign="center";\
+        ctx.fillText(score,200,100);\
+    \}\
+\}\
+\
+function loop()\{\
+    update();\
+    draw();\
+    requestAnimationFrame(loop);\
+\}\
+loop();\
+\
+showSetup();\
+</script>\
+\
+</body>\
+</html>}
