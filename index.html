@@ -46,19 +46,77 @@ canvas{
     width: 290px;
     text-align: center;
     pointer-events: auto;
+    animation: fadeIn 0.4s ease-out;
 }
 
-/* ✨ 高質感標題文字 (深藍紫色調) */
+@keyframes fadeIn {
+    from { opacity: 0; transform: scale(0.95); }
+    to { opacity: 1; transform: scale(1); }
+}
+
+/* ✨ 標題列佈局 */
+.title-container {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 15px;
+}
+
 h2 {
     color: #313866;
-    font-size: 24px;
-    margin-top: 0;
-    margin-bottom: 15px;
+    font-size: 26px; /* 稍微放大純英文標題，讓視覺更協調 */
+    margin: 0;
     letter-spacing: 1px;
-    font-weight: 700;
+    font-weight: 800;
 }
 
-/* ✨ 一般說明文字，使用深鐵灰色避免死黑 */
+/* ✨ 純 CSS 繪製的經典 Flappy Bird 封面頭像 */
+.bird-avatar {
+    width: 32px;
+    height: 32px;
+    background: #ffcc00;
+    border-radius: 50%;
+    position: relative;
+    border: 2px solid #313866;
+    box-sizing: border-box;
+    flex-shrink: 0;
+}
+/* 鳥眼睛 */
+.bird-avatar::before {
+    content: '';
+    position: absolute;
+    top: 4px;
+    right: 4px;
+    width: 8px;
+    height: 8px;
+    background: white;
+    border: 1.5px solid #313866;
+    border-radius: 50%;
+}
+/* 鳥瞳孔 */
+.bird-avatar::after {
+    content: '';
+    position: absolute;
+    top: 8px;
+    right: 6px;
+    width: 3px;
+    height: 3px;
+    background: black;
+    border-radius: 50%;
+}
+/* 鳥嘴巴 */
+.bird-beak {
+    position: absolute;
+    top: 12px;
+    right: -6px;
+    width: 10px;
+    height: 8px;
+    background: orange;
+    border: 1.5px solid #313866;
+    border-radius: 0 4px 4px 0;
+}
+
 .panel-text {
     color: #4a5568;
     font-size: 14px;
@@ -66,7 +124,6 @@ h2 {
     margin: 8px 0;
 }
 
-/* ✨ 難度標籤文字 */
 .diff-highlight {
     color: #4c51bf;
     font-weight: 700;
@@ -75,7 +132,6 @@ h2 {
     border-radius: 6px;
 }
 
-/* ✨ 復活條件專用突顯文字 */
 .revive-title {
     color: #2b6cb0;
     font-weight: 700;
@@ -83,14 +139,12 @@ h2 {
     margin-bottom: 5px;
 }
 
-/* ✨ 剩餘次數小字 */
 .sub-text {
     font-size: 12px;
     color: #718096;
     margin-bottom: 12px;
 }
 
-/* ✨ 任務清單的文字樣式 */
 .task-item label {
     color: #2d3748;
     font-size: 15px;
@@ -200,7 +254,11 @@ function showSetup(){
     gameStarted = false; 
     overlay.innerHTML=`
     <div class="panel">
-    <h2>Flappy Bird 遊戲設定</h2>
+    <!-- ✨ 這裡已將標題改為純 "Flappy Bird" -->
+    <div class="title-container">
+        <div class="bird-avatar"><div class="bird-beak"></div></div>
+        <h2>Flappy Bird</h2>
+    </div>
     <div style="font-size:12px; color:#718096; margin-bottom:10px;">(多個字詞請用中/英文逗號隔開)</div>
     <input type="text" id="taskInput" placeholder="請輸入目標字詞"><br>
     <input type="text" id="reviveInput" placeholder="請輸入復活條件"><br>
@@ -390,9 +448,10 @@ function createPipe(){
 }
 
 function update(){
-    if(!gameStarted||gameOver)return;
-
     frames++;
+
+    if(!gameStarted||gameOver) return;
+
     bird.velocity+=bird.gravity;
     bird.y+=bird.velocity;
 
@@ -437,10 +496,12 @@ function triggerGameOver() {
     gameOverScreen();
 }
 
-function drawBird(){
+function drawBird(customY){
     ctx.save();
-    ctx.translate(bird.x,bird.y);
-    let rotation = Math.min(Math.max(bird.velocity * 0.04, -0.5), 0.7);
+    let currentY = customY !== undefined ? customY : bird.y;
+    ctx.translate(bird.x, currentY);
+    
+    let rotation = gameStarted ? Math.min(Math.max(bird.velocity * 0.04, -0.5), 0.7) : 0;
     ctx.rotate(rotation);
     
     ctx.fillStyle="#ffcc00";
@@ -486,17 +547,20 @@ function draw(){
     ctx.fillStyle = bgGrad;
     ctx.fillRect(0,0,400,600);
 
-    pipes.forEach(pipe=>{
-        ctx.fillStyle="#3cb043";
-        ctx.fillRect(pipe.x,0,60,pipe.top);
-        ctx.fillRect(pipe.x, canvas.height - pipe.bottom - 80, 60, pipe.bottom);
-        
-        ctx.strokeStyle = "#276f2c";
-        ctx.lineWidth = 3;
-        ctx.strokeRect(pipe.x, 0, 60, pipe.top);
-        ctx.strokeRect(pipe.x, canvas.height - pipe.bottom - 80, 60, pipe.bottom);
-    });
+    if(gameStarted) {
+        pipes.forEach(pipe=>{
+            ctx.fillStyle="#3cb043";
+            ctx.fillRect(pipe.x,0,60,pipe.top);
+            ctx.fillRect(pipe.x, canvas.height - pipe.bottom - 80, 60, pipe.bottom);
+            
+            ctx.strokeStyle = "#276f2c";
+            ctx.lineWidth = 3;
+            ctx.strokeRect(pipe.x, 0, 60, pipe.top);
+            ctx.strokeRect(pipe.x, canvas.height - pipe.bottom - 80, 60, pipe.bottom);
+        });
+    }
     
+    // 地面
     ctx.fillStyle="#ded895";
     ctx.fillRect(0,520,400,80);
     ctx.fillStyle="#b5ae60";
@@ -504,9 +568,11 @@ function draw(){
     
     if(gameStarted) {
         drawBird();
+    } else {
+        let menuBirdY = 240 + Math.sin(frames * 0.08) * 15; 
+        drawBird(menuBirdY);
     }
     
-    /* ✨ 加強 Canvas 中遊戲分數的文字陰影 */
     if(gameStarted && !gameOver){
         ctx.fillStyle="white";
         ctx.font="bold 54px 'Segoe UI', sans-serif";
