@@ -14,62 +14,142 @@ body{
     height:100vh;
     background:linear-gradient(135deg,#74ebd5,#9face6);
     font-family:'Segoe UI','PingFang TC','Helvetica Neue',sans-serif;
+    overflow: hidden;
+}
+#game-container {
+    position: relative;
+    width: 400px;
+    height: 600px;
 }
 canvas{
     border-radius:20px;
     box-shadow:0 20px 50px rgba(0,0,0,0.3);
+    display: block;
 }
 #overlay{
     position:absolute;
-    text-align:center;
-    max-width:380px;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    pointer-events: none;
 }
 .panel{
-    background:rgba(255,255,255,0.25);
-    backdrop-filter:blur(15px);
-    padding:20px;
-    border-radius:20px;
+    background:rgba(255,255,255,0.92); 
+    backdrop-filter:blur(20px);
+    padding:25px;
+    border-radius:24px;
+    box-shadow: 0 15px 35px rgba(0,0,0,0.15);
+    width: 290px;
+    text-align: center;
+    pointer-events: auto;
 }
+
+/* ✨ 高質感標題文字 (深藍紫色調) */
+h2 {
+    color: #313866;
+    font-size: 24px;
+    margin-top: 0;
+    margin-bottom: 15px;
+    letter-spacing: 1px;
+    font-weight: 700;
+}
+
+/* ✨ 一般說明文字，使用深鐵灰色避免死黑 */
+.panel-text {
+    color: #4a5568;
+    font-size: 14px;
+    font-weight: 600;
+    margin: 8px 0;
+}
+
+/* ✨ 難度標籤文字 */
+.diff-highlight {
+    color: #4c51bf;
+    font-weight: 700;
+    background: #eedffc;
+    padding: 2px 8px;
+    border-radius: 6px;
+}
+
+/* ✨ 復活條件專用突顯文字 */
+.revive-title {
+    color: #2b6cb0;
+    font-weight: 700;
+    font-size: 15px;
+    margin-bottom: 5px;
+}
+
+/* ✨ 剩餘次數小字 */
+.sub-text {
+    font-size: 12px;
+    color: #718096;
+    margin-bottom: 12px;
+}
+
+/* ✨ 任務清單的文字樣式 */
+.task-item label {
+    color: #2d3748;
+    font-size: 15px;
+    font-weight: 500;
+    cursor: pointer;
+}
+
 button{
-    padding:8px 14px;
+    padding:10px 16px;
     margin:6px;
     border:none;
-    border-radius:10px;
+    border-radius:12px;
     font-size:14px;
+    font-weight: 600;
     background:#667eea;
     color:white;
     cursor:pointer;
+    transition: all 0.2s ease;
+    box-shadow: 0 4px 6px rgba(102, 126, 234, 0.2);
+}
+button:hover {
+    background: #5a6fd6;
+    transform: translateY(-1px);
+    box-shadow: 0 6px 12px rgba(102, 126, 234, 0.3);
 }
 button.active{
     background:#ff6b6b;
-}
-.task-item{
-    display:flex;
-    align-items:center;
-    gap:10px;
-    margin:6px 0;
+    box-shadow: 0 4px 6px rgba(255, 107, 107, 0.2);
 }
 input[type="text"]{
-    width:90%;
-    padding:6px;
-    border-radius:8px;
-    border:none;
-    margin:5px 0;
+    width:95%;
+    padding:8px 12px;
+    border-radius:10px;
+    border: 1.5px solid #e2e8f0;
+    margin:6px 0;
+    box-sizing: border-box;
+    font-size: 14px;
+    transition: border 0.2s;
+}
+input[type="text"]:focus {
+    border-color: #667eea;
+    outline: none;
 }
 </style>
 </head>
 
 <body>
 
-<div id="overlay"></div>
-<canvas id="game" width="400" height="600"></canvas>
+<div id="game-container">
+    <canvas id="game" width="400" height="600"></canvas>
+    <div id="overlay"></div>
+</div>
 
 <script>
 const canvas=document.getElementById("game");
 const ctx=canvas.getContext("2d");
 const overlay=document.getElementById("overlay");
 
-/* ✅ Leaderboard (Session) */
+/* ✅ 排行榜 */
 let leaderboard=[];
 function saveScore(name,score,diff){
     leaderboard.push({name,score,diff});
@@ -77,23 +157,29 @@ function saveScore(name,score,diff){
     leaderboard=leaderboard.slice(0,5);
 }
 function showLeaderboard(){
-    let html="<div class='panel'><h2>🏆 Leaderboard</h2>";
+    let html="<div class='panel'><h2>🏆 排行榜</h2>";
     if(leaderboard.length===0){
-        html+="<div>尚未有分數</div>";
+        html+="<div class='panel-text'>尚未有分數</div>";
     }else{
+        html+="<div style='margin-bottom:15px; text-align:left; padding: 0 10px;'>";
         leaderboard.forEach((p,i)=>{
-            html+=`<div>${i+1}. ${p.name} - ${p.score} (${p.diff})</div>`;
+            html+=`<div style='margin:6px 0; color:#4a5568; font-size:14px;'>
+                <span style='color:#718096; width:20px; display:inline-block;'>${i+1}.</span> 
+                <span style='font-weight:600; color:#2d3748;'>${p.name}</span> 
+                <span style='float:right; color:#2b6cb0;'><b>${p.score}分</b> <small style='color:#a0aec0'>(${p.diff.toUpperCase()})</small></span>
+            </div>`;
         });
+        html+="</div>";
     }
     html+="<button onclick='showSetup()'>返回</button></div>";
     overlay.innerHTML=html;
 }
 
-/* ✅ 任務 */
+/* ✅ 字詞與復活條件變數 */
 let tasks=[];
 let activeTasks=[];
 let taskStatus=[];
-let reviveMessage="完成 3 個任務即可復活！";
+let reviveMessage="確認以下目標字詞即可復活！"; 
 let reviveCount=0;
 const maxRevives=5;
 
@@ -111,38 +197,43 @@ function setDifficulty(level){
 }
 
 function showSetup(){
+    gameStarted = false; 
     overlay.innerHTML=`
     <div class="panel">
-    <h2>建立任務清單</h2>
-    <input type="text" id="taskInput" placeholder="請輸入目標字詞！！！"><br>
-    <input type="text" id="reviveInput" placeholder="請輸入復活條件！！！"><br>
+    <h2>Flappy Bird 遊戲設定</h2>
+    <div style="font-size:12px; color:#718096; margin-bottom:10px;">(多個字詞請用中/英文逗號隔開)</div>
+    <input type="text" id="taskInput" placeholder="請輸入目標字詞"><br>
+    <input type="text" id="reviveInput" placeholder="請輸入復活條件"><br>
 
-    <div>選擇難度：</div>
+    <div class="panel-text" style="margin-top:12px;">選擇難度：</div>
     ${difficultyButton("easy","Easy")}
     ${difficultyButton("normal","Normal")}
     ${difficultyButton("difficult","Difficult")}
 
-    <div>目前難度： <b>${difficulty.toUpperCase()}</b></div>
+    <div class="panel-text" style="margin: 12px 0 18px 0;">目前難度： <span class="diff-highlight">${difficulty.toUpperCase()}</span></div>
 
-    <button onclick="saveSetup()">開始遊戲</button>
-    <button onclick="showLeaderboard()">查看排行榜</button>
+    <button onclick="saveSetup()" style="width:85%; background:linear-gradient(to right, #667eea, #764ba2);">開始遊戲</button>
+    <button onclick="showLeaderboard()" style="background:none; color:#667eea; box-shadow:none; padding:5px;">查看排行榜</button>
     </div>`;
 }
 
 /* ✅ 飛行音效 */
 const audioCtx=new (window.AudioContext||window.webkitAudioContext)();
 function swoosh(startFreq,endFreq,duration,volume=0.2,type="triangle"){
-    const osc=audioCtx.createOscillator();
-    const gain=audioCtx.createGain();
-    osc.connect(gain);
-    gain.connect(audioCtx.destination);
-    osc.type=type;
-    osc.frequency.setValueAtTime(startFreq,audioCtx.currentTime);
-    osc.frequency.exponentialRampToValueAtTime(endFreq,audioCtx.currentTime+duration);
-    gain.gain.setValueAtTime(volume,audioCtx.currentTime);
-    gain.gain.exponentialRampToValueAtTime(0.001,audioCtx.currentTime+duration);
-    osc.start();
-    osc.stop(audioCtx.currentTime+duration);
+    try {
+        if (audioCtx.state === 'suspended') audioCtx.resume();
+        const osc=audioCtx.createOscillator();
+        const gain=audioCtx.createGain();
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
+        osc.type=type;
+        osc.frequency.setValueAtTime(startFreq,audioCtx.currentTime);
+        osc.frequency.exponentialRampToValueAtTime(endFreq,audioCtx.currentTime+duration);
+        gain.gain.setValueAtTime(volume,audioCtx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.001,audioCtx.currentTime+duration);
+        osc.start();
+        osc.stop(audioCtx.currentTime+duration);
+    } catch(e) { console.log(e); }
 }
 function jumpSound(){
     if(difficulty==="easy") swoosh(300,600,0.15,0.15);
@@ -160,9 +251,9 @@ function hitSound(){
     if(difficulty==="difficult") swoosh(700,60,0.4,0.3,"sawtooth");
 }
 
-/* ✅ 遊戲 */
-let settings={speed:1.6,gap:220,spawnRate:140};
-let bird={x:80,y:300,r:20,velocity:0,gravity:0.35,jump:-6};
+/* ✅ 遊戲主邏輯變數 */
+let settings={speed:2.0,gap:140,spawnRate:100};
+let bird={x:80,y:300,r:15,velocity:0,gravity:0.4,jump:-6.5};
 let pipes=[];
 let score=0;
 let frames=0;
@@ -171,18 +262,18 @@ let gameOver=false;
 
 function saveSetup(){
     let input=document.getElementById("taskInput").value;
-    tasks=input.split(",").map(t=>t.trim()).filter(t=>t!="");
+    tasks=input.split(/[,，]/).map(t=>t.trim()).filter(t=>t!="");
 
     if(tasks.length===0){
-        tasks=["完成一項小任務","喝水","深呼吸"];
+        tasks=["持續專注", "永不放棄", "突破自我"];
     }
 
     let msg=document.getElementById("reviveInput").value;
-    if(msg) reviveMessage=msg;
+    reviveMessage = msg ? msg : "滿足復活條件即可復活：";
 
-    if(difficulty==="easy") settings.speed=1.2;
-    if(difficulty==="normal") settings.speed=1.6;
-    if(difficulty==="difficult") settings.speed=2.2;
+    if(difficulty==="easy") { settings.speed=1.5; settings.gap=170; settings.spawnRate=130; }
+    if(difficulty==="normal") { settings.speed=2.0; settings.gap=140; settings.spawnRate=100; }
+    if(difficulty==="difficult") { settings.speed=2.8; settings.gap=120; settings.spawnRate=80; }
 
     startGame();
 }
@@ -205,7 +296,8 @@ function pickRandomTasks(){
         let j=Math.floor(Math.random()*(i+1));
         [shuffled[i],shuffled[j]]=[shuffled[j],shuffled[i]];
     }
-    activeTasks=shuffled.slice(0,Math.min(3,shuffled.length));
+    let requiredCount = Math.min(3, shuffled.length);
+    activeTasks=shuffled.slice(0, requiredCount);
     taskStatus=new Array(activeTasks.length).fill(false);
 }
 
@@ -215,38 +307,43 @@ function gameOverScreen(){
     activeTasks.forEach((t,i)=>{
         html+=`
         <div class="task-item">
-            <input type="checkbox"
-            onchange="updateTask(${i},this.checked)">
-            <span>${t}</span>
+            <input type="checkbox" id="task-${i}" onchange="updateTask(${i},this.checked)">
+            <label for="task-${i}">${t}</label>
         </div>`;
     });
 
     overlay.innerHTML=`
     <div class="panel">
-        <h2>Game Over</h2>
-        <div>分數：${score}</div>
-        <input type="text" id="playerName" placeholder="輸入名字">
+        <h2 style="color:#ff6b6b; margin-top:0;">Game Over</h2>
+        <div style="font-size:20px; color:#2d3748; font-weight:700; margin-bottom:12px;">本次得分：<span style="color:#e53e3e; font-size:26px;">${score}</span></div>
+        <input type="text" id="playerName" placeholder="輸入名字提交分數" style="text-align:center;"><br>
         <button onclick="submitScore()">提交分數</button>
-        <div>${reviveMessage}</div>
-        <div>剩餘復活次數：${maxRevives-reviveCount}</div>
-        ${html}
-        <div id="reviveArea"></div>
-        <button onclick="showSetup()">重新開始</button>
+        <hr style="border:0; border-top:1.5px solid #edf2f7; margin:15px 0;">
+        
+        <div class="revive-title">${reviveMessage}</div>
+        <div class="sub-text">（剩餘復活次數：${maxRevives-reviveCount}）</div>
+        
+        <div style="background:#f7fafc; padding:8px 15px; border-radius:14px; border:1px solid #edf2f7;">${html}</div>
+        <div id="reviveArea" style="margin-top:12px;"></div>
+        <button onclick="showSetup()" style="background:#718096; margin-top:15px; width:80%;">回主選單</button>
     </div>`;
 }
 
 function submitScore(){
-    let name=document.getElementById("playerName").value||"Player";
+    let name=document.getElementById("playerName").value.trim()||"Player";
     saveScore(name,score,difficulty);
     showLeaderboard();
 }
 
 function updateTask(i,val){
     taskStatus[i]=val;
-    if(taskStatus.filter(x=>x).length>=3 &&
-       reviveCount<maxRevives){
+    const allDone = taskStatus.every(x => x);
+    
+    if(allDone && reviveCount < maxRevives){
         document.getElementById("reviveArea").innerHTML=
-        `<button onclick="reviveBird()">🔥 復活小鳥</button>`;
+        `<button onclick="reviveBird()" style="background:linear-gradient(to right, #11998e, #38ef7d); font-size:16px; width:100%; box-shadow: 0 4px 10px rgba(56,239,125,0.3);">🔥 立即復活</button>`;
+    } else {
+        document.getElementById("reviveArea").innerHTML= "";
     }
 }
 
@@ -257,22 +354,37 @@ function reviveBird(){
     bird.y=300;
     bird.velocity=0;
     pipes=[];
-    frames=0;
+    frames=0; 
 }
 
-document.addEventListener("click",()=>{
-    if(gameStarted&&!gameOver){
+function triggerJump() {
+    if(gameStarted && !gameOver){
         bird.velocity=bird.jump;
         jumpSound();
+    }
+}
+
+window.addEventListener("click",(e)=>{
+    if(e.target.closest('.panel')) return;
+    triggerJump();
+});
+
+window.addEventListener("keydown",(e)=>{
+    if(e.code === "Space") {
+        e.preventDefault(); 
+        triggerJump();
     }
 });
 
 function createPipe(){
-    let topHeight=Math.random()*200+80;
+    let minHeight = 60;
+    let maxHeight = canvas.height - settings.gap - 140;
+    let topHeight= Math.random() * (maxHeight - minHeight) + minHeight;
+    
     pipes.push({
         x:canvas.width,
         top:topHeight,
-        bottom:canvas.height-topHeight-settings.gap-80,
+        bottom: canvas.height - topHeight - settings.gap - 80,
         passed:false
     });
 }
@@ -284,62 +396,82 @@ function update(){
     bird.velocity+=bird.gravity;
     bird.y+=bird.velocity;
 
+    if (bird.y - bird.r < 0) {
+        bird.y = bird.r;
+        bird.velocity = 0;
+    }
+
     if(frames%settings.spawnRate===0)createPipe();
 
     pipes.forEach(pipe=>{
         pipe.x-=settings.speed;
 
-        if(!pipe.passed&&pipe.x<bird.x){
+        if(!pipe.passed&&pipe.x < bird.x){
             pipe.passed=true;
             score++;
             scoreSound();
         }
 
         if(
-            bird.x+bird.r>pipe.x &&
-            bird.x-bird.r<pipe.x+60 &&
-            (bird.y-bird.r<pipe.top ||
-             bird.y+bird.r>canvas.height-pipe.bottom-80)
+            bird.x+bird.r > pipe.x &&
+            bird.x-bird.r < pipe.x+60
         ){
-            gameOver=true;
-            hitSound();
-            gameOverScreen();
+            if(bird.y-bird.r < pipe.top || bird.y+bird.r > canvas.height - pipe.bottom - 80) {
+                triggerGameOver();
+            }
         }
     });
 
-    if(bird.y+bird.r>canvas.height-80){
-        gameOver=true;
-        hitSound();
-        gameOverScreen();
+    if(bird.y+bird.r > canvas.height-80){
+        triggerGameOver();
     }
+    
+    if(pipes.length > 0 && pipes[0].x < -60) {
+        pipes.shift();
+    }
+}
+
+function triggerGameOver() {
+    gameOver=true;
+    hitSound();
+    gameOverScreen();
 }
 
 function drawBird(){
     ctx.save();
     ctx.translate(bird.x,bird.y);
-    ctx.rotate(bird.velocity*0.05);
+    let rotation = Math.min(Math.max(bird.velocity * 0.04, -0.5), 0.7);
+    ctx.rotate(rotation);
+    
     ctx.fillStyle="#ffcc00";
     ctx.beginPath();
     ctx.arc(0,0,bird.r,0,Math.PI*2);
     ctx.fill();
-    let wing=Math.sin(frames*0.3)*10;
+    
+    let wing=Math.sin(frames*0.4)*8;
     ctx.fillStyle="#ffaa00";
+    ctx.save();
+    ctx.translate(-4, 2);
+    ctx.rotate(wing * Math.PI / 180);
     ctx.beginPath();
-    ctx.ellipse(-5,0,15,10,wing*Math.PI/180,0,Math.PI*2);
+    ctx.ellipse(0,0,10,7,0,0,Math.PI*2);
     ctx.fill();
+    ctx.restore();
+    
     ctx.fillStyle="white";
     ctx.beginPath();
-    ctx.arc(8,-5,6,0,Math.PI*2);
+    ctx.arc(6,-5,5,0,Math.PI*2);
     ctx.fill();
     ctx.fillStyle="black";
     ctx.beginPath();
-    ctx.arc(10,-5,3,0,Math.PI*2);
+    ctx.arc(8,-5,2,0,Math.PI*2);
     ctx.fill();
+    
     ctx.fillStyle="orange";
     ctx.beginPath();
-    ctx.moveTo(20,0);
-    ctx.lineTo(35,5);
-    ctx.lineTo(20,10);
+    ctx.moveTo(13,-2);
+    ctx.lineTo(23,2);
+    ctx.lineTo(13,6);
     ctx.closePath();
     ctx.fill();
     ctx.restore();
@@ -347,19 +479,46 @@ function drawBird(){
 
 function draw(){
     ctx.clearRect(0,0,400,600);
+    
+    let bgGrad = ctx.createLinearGradient(0,0,0,600);
+    bgGrad.addColorStop(0, "#3a7bd5");
+    bgGrad.addColorStop(1, "#3a6073");
+    ctx.fillStyle = bgGrad;
+    ctx.fillRect(0,0,400,600);
+
     pipes.forEach(pipe=>{
         ctx.fillStyle="#3cb043";
         ctx.fillRect(pipe.x,0,60,pipe.top);
-        ctx.fillRect(pipe.x,600-pipe.bottom-80,60,pipe.bottom);
+        ctx.fillRect(pipe.x, canvas.height - pipe.bottom - 80, 60, pipe.bottom);
+        
+        ctx.strokeStyle = "#276f2c";
+        ctx.lineWidth = 3;
+        ctx.strokeRect(pipe.x, 0, 60, pipe.top);
+        ctx.strokeRect(pipe.x, canvas.height - pipe.bottom - 80, 60, pipe.bottom);
     });
+    
     ctx.fillStyle="#ded895";
     ctx.fillRect(0,520,400,80);
-    drawBird();
-    if(!gameOver){
-        ctx.fillStyle="#111";
-        ctx.font="bold 50px Segoe UI";
+    ctx.fillStyle="#b5ae60";
+    ctx.fillRect(0,520,400,8);
+    
+    if(gameStarted) {
+        drawBird();
+    }
+    
+    /* ✨ 加強 Canvas 中遊戲分數的文字陰影 */
+    if(gameStarted && !gameOver){
+        ctx.fillStyle="white";
+        ctx.font="bold 54px 'Segoe UI', sans-serif";
+        ctx.shadowColor = "rgba(0,0,0,0.4)";
+        ctx.shadowBlur = 8;
+        ctx.shadowOffsetX = 2;
+        ctx.shadowOffsetY = 4;
         ctx.textAlign="center";
-        ctx.fillText(score,200,100);
+        ctx.fillText(score,200,110);
+        ctx.shadowBlur = 0; 
+        ctx.shadowOffsetX = 0;
+        ctx.shadowOffsetY = 0;
     }
 }
 
